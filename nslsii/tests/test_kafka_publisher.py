@@ -14,6 +14,8 @@ import nslsii
 
 
 def test_kafka_publisher(RE, hw, bootstrap_servers):
+    bootstrap_servers = "cmb01:9092, cmb02:9092, cmb03:9092"
+
     kafka_topic, runrouter_token = nslsii.subscribe_kafka_publisher(
         RE=RE,
         beamline_name="test",
@@ -126,18 +128,20 @@ def test_kafka_publisher(RE, hw, bootstrap_servers):
 
 
 def test_publisher_with_no_broker(RE, hw):
+    bootstrap_servers = "cmb01:9092, cmb02:9092, cmb03:9092"
     # specify a bootstrap server that does not exist
     nslsii.subscribe_kafka_publisher(
         RE=RE,
         beamline_name="test",
-        bootstrap_servers="100.100.100.100:9092",
+        bootstrap_servers=bootstrap_servers,
         producer_config={
-            "acks": "all",
+            "acks": 0,
             "enable.idempotence": False,
-            "request.timeout.ms": 1000,
+            "message.timeout.ms": 5000,
+            "queued.max.messages.kbytes": 2097150,
+            "queue.buffering.max.messages": 200000,
         },
     )
-
     # use a RunRouter to get event_pages locally because
     # the KafkaPublisher will produce event_pages
     local_published_documents = list()
@@ -152,11 +156,11 @@ def test_publisher_with_no_broker(RE, hw):
     RE.subscribe(local_run_router)
 
     t0 = time.time()
-    RE(count([hw.det1]))
+    RE(count([hw.det1], num=5000))
     t1 = time.time()
-
+    breakpoint()
     # timeout is set at 1s but it takes longer than 5s to run count
-    print(f"time for count: {t1-t0:.3f}")
-    assert (t1 - t0) < 10.0
+    print(f"time for count999: {t1-t0:.3f}")
+    assert (t1 - t0) < 5.0
 
     assert len(local_published_documents) == 4
